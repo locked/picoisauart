@@ -42,8 +42,19 @@ int main() {
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
 
+    gpio_init(ADS_PIN);
     gpio_set_dir(ADS_PIN, GPIO_OUT);
 
+    gpio_init(AD0_PIN);
+    gpio_init(AD1_PIN);
+    gpio_init(AD2_PIN);
+    gpio_init(AD3_PIN);
+    gpio_init(AD4_PIN);
+    gpio_init(AD5_PIN);
+    gpio_init(AD6_PIN);
+    gpio_init(AD7_PIN);
+    gpio_init(A8_PIN);
+    gpio_init(A9_PIN);
     gpio_set_dir(AD0_PIN, GPIO_IN);
     gpio_set_dir(AD1_PIN, GPIO_IN);
     gpio_set_dir(AD2_PIN, GPIO_IN);
@@ -55,8 +66,13 @@ int main() {
     gpio_set_dir(A8_PIN, GPIO_IN);
     gpio_set_dir(A9_PIN, GPIO_IN);
 
+    gpio_init(IOW_PIN);
     gpio_set_dir(IOW_PIN, GPIO_IN);
+    gpio_init(IOR_PIN);
     gpio_set_dir(IOR_PIN, GPIO_IN);
+
+    char buf[500] = "";
+    uint a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, d0, d1, d2, d3, d4, d5, d6, d7, iow, ior;
 
     while (true) {
         gpio_put(LED_PIN, 1);
@@ -64,31 +80,35 @@ int main() {
         gpio_put(LED_PIN, 0);
 
         gpio_put(ADS_PIN, 0);
-        uint a0 = gpio_get(AD0_PIN);
-        uint a1 = gpio_get(AD1_PIN);
-        uint a2 = gpio_get(AD2_PIN);
-        uint a3 = gpio_get(AD3_PIN);
-        uint a4 = gpio_get(AD4_PIN);
-        uint a5 = gpio_get(AD5_PIN);
-        uint a6 = gpio_get(AD6_PIN);
-        uint a7 = gpio_get(AD7_PIN);
-        uint a8 = gpio_get(A8_PIN);
-        uint a9 = gpio_get(A9_PIN);
+        a0 = gpio_get(AD0_PIN);
+        a1 = gpio_get(AD1_PIN);
+        a2 = gpio_get(AD2_PIN);
+        a3 = gpio_get(AD3_PIN);
+        a4 = gpio_get(AD4_PIN);
+        a5 = gpio_get(AD5_PIN);
+        a6 = gpio_get(AD6_PIN);
+        a7 = gpio_get(AD7_PIN);
+        a8 = gpio_get(A8_PIN);
+        a9 = gpio_get(A9_PIN);
+
         gpio_put(ADS_PIN, 1);
-        uint d0 = gpio_get(AD0_PIN);
-        uint d1 = gpio_get(AD1_PIN);
-        uint d2 = gpio_get(AD2_PIN);
-        uint d3 = gpio_get(AD3_PIN);
-        uint d4 = gpio_get(AD4_PIN);
-        uint d5 = gpio_get(AD5_PIN);
-        uint d6 = gpio_get(AD6_PIN);
-        uint d7 = gpio_get(AD7_PIN);
-        char buf[500] = "";
-        sprintf(buf, "A0-9:[%d:%d:%d:%d:%d:%d:%d:%d:%d:%d] D0-7:[%d:%d:%d:%d:%d:%d:%d:%d]\n", a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, d0, d1, d2, d3, d4, d5, d6, d7);
+        d0 = gpio_get(AD0_PIN);
+        d1 = gpio_get(AD1_PIN);
+        d2 = gpio_get(AD2_PIN);
+        d3 = gpio_get(AD3_PIN);
+        d4 = gpio_get(AD4_PIN);
+        d5 = gpio_get(AD5_PIN);
+        d6 = gpio_get(AD6_PIN);
+        d7 = gpio_get(AD7_PIN);
+
+        iow = gpio_get(IOW_PIN);
+        ior = gpio_get(IOR_PIN);
+
+        sprintf(buf, "A0-9:[%u:%u:%u:%u:%u:%u:%u:%u:%u:%u] D0-7:[%u:%u:%u:%u:%u:%u:%u:%u] IOW/R:[%u/%u]\r\n", a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, d0, d1, d2, d3, d4, d5, d6, d7, iow, ior);
         uart_puts(UART_ID, buf);
         printf(".");
 
-        sleep_ms(1000);
+        sleep_ms(500);
     }
 
     return 0;
