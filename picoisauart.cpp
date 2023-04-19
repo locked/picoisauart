@@ -36,7 +36,7 @@ int main() {
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
     //gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
 
-    uart_puts(UART_ID, " Hello, UART!\n");
+    uart_puts(UART_ID, "==START==\r\n");
 
     const uint LED_PIN = PICO_DEFAULT_LED_PIN;
     gpio_init(LED_PIN);
@@ -73,14 +73,22 @@ int main() {
 
     char buf[500] = "";
     uint a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, d0, d1, d2, d3, d4, d5, d6, d7, iow, ior;
+    uint address, last_address = 0;
 
     while (true) {
         gpio_put(LED_PIN, 1);
-        sleep_ms(100);
+        sleep_ms(50);
         gpio_put(LED_PIN, 0);
 
         gpio_put(ADS_PIN, 0);
-        a0 = gpio_get(AD0_PIN);
+
+        last_address = address;
+        address = 0;
+        for (uint i=0; i<10; i++) {
+            address |= gpio_get(AD0_PIN + i) << i;
+		}
+		/*
+		a0 = gpio_get(AD0_PIN);
         a1 = gpio_get(AD1_PIN);
         a2 = gpio_get(AD2_PIN);
         a3 = gpio_get(AD3_PIN);
@@ -90,6 +98,7 @@ int main() {
         a7 = gpio_get(AD7_PIN);
         a8 = gpio_get(A8_PIN);
         a9 = gpio_get(A9_PIN);
+        */
 
         gpio_put(ADS_PIN, 1);
         d0 = gpio_get(AD0_PIN);
@@ -104,11 +113,14 @@ int main() {
         iow = gpio_get(IOW_PIN);
         ior = gpio_get(IOR_PIN);
 
-        sprintf(buf, "A0-9:[%u:%u:%u:%u:%u:%u:%u:%u:%u:%u] D0-7:[%u:%u:%u:%u:%u:%u:%u:%u] IOW/R:[%u/%u]\r\n", a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, d0, d1, d2, d3, d4, d5, d6, d7, iow, ior);
-        uart_puts(UART_ID, buf);
-        printf(".");
+		if (last_address != address) {
+			//sprintf(buf, "A0-9:[%u:%u:%u:%u:%u:%u:%u:%u:%u:%u => %u] D0-7:[%u:%u:%u:%u:%u:%u:%u:%u] IOW/R:[%u/%u]\r\n", a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, address, d0, d1, d2, d3, d4, d5, d6, d7, iow, ior);
+			sprintf(buf, "A0-9:[%u] D0-7:[%u:%u:%u:%u:%u:%u:%u:%u] IOW/R:[%u/%u]\r\n", address, d0, d1, d2, d3, d4, d5, d6, d7, iow, ior);
+			uart_puts(UART_ID, buf);
+			//printf(".");
+		}
 
-        sleep_ms(500);
+        //sleep_ms(500);
     }
 
     return 0;
