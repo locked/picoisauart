@@ -30,20 +30,12 @@ pico_sdk_init()
 add_executable(picoisauart picoisauart.cpp)
 pico_set_program_version(picoisauart ${CMAKE_PROJECT_VERSION})
 
-#add_compile_definitions(
-#        PICO_DEFAULT_UART=1
-#        #PICO_DEFAULT_UART_TX_PIN=28
-#        #PICO_DEFAULT_UART_RX_PIN=-1
-#        # USE_IRQ=1
-#        USE_ALARM=1
-#        PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS=5000000
-#)
-
 target_sources(picoisauart PRIVATE)
 
 target_link_libraries(
     picoisauart
     pico_stdlib
+    hardware_i2c
 )
 
 pico_enable_stdio_usb(picoisauart 1)
