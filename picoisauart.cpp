@@ -159,8 +159,8 @@ int main() {
 	bi_decl(bi_2pins_with_func(SDA_PIN, SCL_PIN, GPIO_FUNC_I2C));
 
 	lcd_init();
-	//lcd_set_cursor(0, 0);
-	//lcd_string("START");
+	lcd_set_cursor(0, 0);
+	lcd_string("START");
 
 	const uint LED_PIN = PICO_DEFAULT_LED_PIN;
 	gpio_init(LED_PIN);
@@ -196,10 +196,8 @@ int main() {
 	gpio_set_dir(IOR_PIN, GPIO_IN);
 
 	char buf[500] = "";
-	uint a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, d0, d1, d2, d3, d4, d5, d6, d7, iow, ior;
-	uint address, last_address, all, data = 0;
-	uint last_iow = 0;
-	uint line = 0;
+	uint address, last_address, last_data, all, data = 0;
+	uint last_io, io = 0;
 
 	gpio_put(ADS_PIN, 0);
 	sleep_us(1);
@@ -210,18 +208,20 @@ int main() {
 	uart_puts(UART_ID, "==START==\r\n");
 
 	gpio_put(LED_PIN, 1);
-	last_iow = gpio_get(IOW_PIN);
 	gpio_put(ADS_PIN, 0);
+	uint64_t last_display = to_us_since_boot(get_absolute_time());
+	uint64_t now = 0;
+	uint i = 0;
+	uint io_pin = IOW_PIN;
+	last_io = gpio_get(io_pin);
 	while (true) {
-		last_iow = iow;
-		iow = gpio_get(IOW_PIN);
-		if (last_iow == 1 && iow == 0) {	// falling IOW
+		last_io = io;
+		io = gpio_get(io_pin);
+		if (last_io == 1 && io == 0) {	// falling IOW
 			all = gpio_get_all();
 			address = (all >> 6) & 0xFF;
 
-			//sprintf(buf, "FALLING IOR [%02X]\r\n", address);
-			//uart_puts(UART_ID, buf);
-
+			gpio_put(ADS_PIN, 1);
 			gpio_put(ADS_PIN, 1);
 			gpio_put(ADS_PIN, 1);
 			gpio_put(ADS_PIN, 1);
@@ -230,16 +230,22 @@ int main() {
 
 			gpio_put(ADS_PIN, 0);
 
-			//if (last_address != address) {
 			if (address == 0x80 && data != 0x80) {
-				sprintf(buf, "D[%02X]\r\n", data);
-				//lcd_set_cursor(line, 0);
-				//lcd_string(buf);
+				sprintf(buf, "D[%02X] D[%02X]\r\n", last_data, data);
 				uart_puts(UART_ID, buf);
 				//line = (line + 1) % 2;
+				last_data = data;
 			}
-
-			//sleep_ms(500);
+		}
+		i += 1;
+		if (i > 50000) {
+			i = 0;
+			now = to_us_since_boot(get_absolute_time());
+			if (now - last_display > 20000000) {
+				lcd_set_cursor(0, 0);
+				lcd_string(buf);
+				last_display = now;
+			}
 		}
 	}
 
