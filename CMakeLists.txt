@@ -37,6 +37,7 @@ target_sources(picoisauart PRIVATE)
 target_link_libraries(
     picoisauart
     pico_stdlib
+    hardware_dma
     hardware_i2c
     hardware_pio
 )

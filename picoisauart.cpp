@@ -6,6 +6,8 @@
 #include "isa.pio.h"
 #include "hardware/i2c.h"
 #include "pico/binary_info.h"
+#include "hardware/dma.h"
+#include "hardware/structs/bus_ctrl.h"
 
 
 // commands
@@ -134,11 +136,33 @@ void lcd_init() {
 #define SDA_PIN 17
 #define SCL_PIN 16
 
+
+char buf[50] = "";
+uint address, last_address, last_data, all, data = 0;
+uint last_io, io = 0;
+uint code_index = 0;
+uint codes[200] = {};
+uint sm;
+
+
+void iow_isr(void) {
+	uint32_t iow_read = pio_sm_get(pio0, sm);
+	uint16_t port = (iow_read >> 8) & 0x00FF;
+	if (port == 0x80) {
+		uint16_t data = iow_read & 0x00FF;
+		codes[code_index] = data;
+		code_index += 1;
+	}
+
+    // pio_interrupt_clear(pio0, pio_intr_sm0_rxnempty_lsb);
+    irq_clear(PIO0_IRQ_0);
+}
+
+
 int main() {
 	uart_init(UART_ID, BAUD_RATE);
 	gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
 	//gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-
 
 	i2c_init(i2c_default, 100 * 1000);
 
@@ -155,40 +179,60 @@ int main() {
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
 
-	//gpio_init(ADS_PIN);
-	//gpio_set_dir(ADS_PIN, GPIO_OUT);
-	//gpio_init(AD0_PIN);
-	//gpio_init(IOW_PIN);
-	//gpio_set_dir(IOW_PIN, GPIO_IN);
-	//gpio_init(IOR_PIN);
-	//gpio_set_dir(IOR_PIN, GPIO_IN);
-
-	char buf[50] = "";
-	uint address, last_address, last_data, all, data = 0;
-	uint last_io, io = 0;
-
-	//gpio_put(ADS_PIN, 0);
-	//sleep_us(1);
-	//gpio_put(ADS_PIN, 1);
-	//sleep_us(1);
-	//gpio_put(ADS_PIN, 0);
-
 	uart_puts(UART_ID, "==START==\r\n");
 
 	gpio_put(LED_PIN, 1);
-	gpio_put(ADS_PIN, 0);
-	uint64_t last_display = to_us_since_boot(get_absolute_time());
+
+	// waggle ADS to set BUSOE latch
+    gpio_init(ADS_PIN);
+    gpio_set_dir(ADS_PIN, GPIO_OUT);
+    gpio_put(ADS_PIN, 1);
+    busy_wait_ms(10);
+    gpio_put(ADS_PIN, 0);
+
+    gpio_set_slew_rate(ADS_PIN, GPIO_SLEW_RATE_FAST);
+
+   	uint64_t last_display = to_us_since_boot(get_absolute_time());
 	uint64_t now = 0;
-	uint i = 0;
+	uint i, j = 0;
+	uint last_index = 0;
 	uint io_pin = IOW_PIN;
 	last_io = gpio_get(io_pin);
 
-    // Load the isa program, and a free state machine to run the program
-    PIO pio = pio0;
-    uint offset = pio_add_program(pio, &isa_program);
-    uint sm = pio_claim_unused_sm(pio, true);
-    isa_program_init(pio, sm, offset);
+    uint offset = pio_add_program(pio0, &isa_program);
+    sm = pio_claim_unused_sm(pio0, true);
+    isa_program_init(pio0, sm, offset);
 
+    irq_set_enabled(PIO0_IRQ_0, false);
+    pio_set_irq0_source_enabled(pio0, pis_sm0_rx_fifo_not_empty, true);
+    irq_set_priority(PIO0_IRQ_0, PICO_HIGHEST_IRQ_PRIORITY);
+    irq_set_exclusive_handler(PIO0_IRQ_0, iow_isr);
+    irq_set_enabled(PIO0_IRQ_0, true);
+
+
+	while (true) {
+		i += 1;
+		if (i > 10000) {
+			i = 0;
+			now = to_us_since_boot(get_absolute_time());
+			if (now - last_display > 1000000) {
+				for (j=last_index; j<code_index; j++) {
+					sprintf(buf, "D[%02X]\r\n", codes[j]);
+					uart_puts(UART_ID, buf);
+				}
+				last_index = j;
+
+				if (code_index >= 3) {
+					sprintf(buf, "%02X => %02X => %02X ", codes[code_index-3], codes[code_index-2], codes[code_index-1]);
+					lcd_set_cursor(0, 0);
+					lcd_string(buf);
+				}
+			}
+		}
+	}
+
+	/*
+	uint index = 0;
 	uint line = 0;
 	while (true) {
 		uint32_t iow_read = pio_sm_get(pio, sm);
@@ -196,16 +240,31 @@ int main() {
 		if (port == 0x80) {
 			uint16_t data = iow_read & 0x00FF;
 			if (last_data != data) {
-				sprintf(buf, "D[%02X]\r\n", data);
-				uart_puts(UART_ID, buf);
+				if (index < 100) {
+					codes[index] = data;
+					index += 1;
+				}
+				last_data = data;
+			}
+		}
+		i += 1;
+		if (i > 50000) {
+			i = 0;
+			now = to_us_since_boot(get_absolute_time());
+			if (now - last_display > 2000000) {
+				for (j=last_index; j<index; j++) {
+					sprintf(buf, "D[%02X]\r\n", codes[j]);
+					uart_puts(UART_ID, buf);
+				}
+				last_index = j;
 
 				//sprintf(buf, "D[%02X] D[%02X]", last_data, data);
 				//lcd_set_cursor(0, 0);
 				//lcd_string(buf);
-				last_data = data;
 			}
 		}
 	}
+	*/
 
 	/*
 	 * Slow method
