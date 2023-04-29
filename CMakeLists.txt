@@ -30,12 +30,15 @@ pico_sdk_init()
 add_executable(picoisauart picoisauart.cpp)
 pico_set_program_version(picoisauart ${CMAKE_PROJECT_VERSION})
 
+pico_generate_pio_header(picoisauart ${CMAKE_CURRENT_LIST_DIR}/isa.pio)
+
 target_sources(picoisauart PRIVATE)
 
 target_link_libraries(
     picoisauart
     pico_stdlib
     hardware_i2c
+    hardware_pio
 )
 
 pico_enable_stdio_usb(picoisauart 1)

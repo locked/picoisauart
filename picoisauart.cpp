@@ -2,6 +2,8 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
+#include "hardware/pio.h"
+#include "isa.pio.h"
 #include "hardware/i2c.h"
 #include "pico/binary_info.h"
 
@@ -119,25 +121,14 @@ void lcd_init() {
 //#define UART_RX_PIN -1
 
 // pins
-#define IOW_PIN 4
-#define IOR_PIN 5
-#define AD0_PIN 6
-#define AD1_PIN 7
-#define AD2_PIN 8
-#define AD3_PIN 9
-#define AD4_PIN 10
-#define AD5_PIN 11
-#define AD6_PIN 12
-#define AD7_PIN 13
-#define A8_PIN 14
-#define A9_PIN 15
+//#define IOW_PIN 4
+//#define IOR_PIN 5
+//#define AD0_PIN 6
+//#define DACK_PIN 19
+//#define IRQ_PIN 21
+//#define IOCHRDY_PIN 26
+//#define ADS_PIN 27
 
-#define DACK_PIN 19
-
-#define IRQ_PIN 21
-
-#define IOCHRDY_PIN 26
-#define ADS_PIN 27
 #define UART_TX_PIN 28
 
 #define SDA_PIN 17
@@ -159,51 +150,28 @@ int main() {
 	bi_decl(bi_2pins_with_func(SDA_PIN, SCL_PIN, GPIO_FUNC_I2C));
 
 	lcd_init();
-	lcd_set_cursor(0, 0);
-	lcd_string("START");
 
 	const uint LED_PIN = PICO_DEFAULT_LED_PIN;
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
 
-	gpio_init(ADS_PIN);
-	gpio_set_dir(ADS_PIN, GPIO_OUT);
+	//gpio_init(ADS_PIN);
+	//gpio_set_dir(ADS_PIN, GPIO_OUT);
+	//gpio_init(AD0_PIN);
+	//gpio_init(IOW_PIN);
+	//gpio_set_dir(IOW_PIN, GPIO_IN);
+	//gpio_init(IOR_PIN);
+	//gpio_set_dir(IOR_PIN, GPIO_IN);
 
-	gpio_init(AD0_PIN);
-	gpio_init(AD1_PIN);
-	gpio_init(AD2_PIN);
-	gpio_init(AD3_PIN);
-	gpio_init(AD4_PIN);
-	gpio_init(AD5_PIN);
-	gpio_init(AD6_PIN);
-	gpio_init(AD7_PIN);
-	gpio_init(A8_PIN);
-	gpio_init(A9_PIN);
-	gpio_set_dir(AD0_PIN, GPIO_IN);
-	gpio_set_dir(AD1_PIN, GPIO_IN);
-	gpio_set_dir(AD2_PIN, GPIO_IN);
-	gpio_set_dir(AD3_PIN, GPIO_IN);
-	gpio_set_dir(AD4_PIN, GPIO_IN);
-	gpio_set_dir(AD5_PIN, GPIO_IN);
-	gpio_set_dir(AD6_PIN, GPIO_IN);
-	gpio_set_dir(AD7_PIN, GPIO_IN);
-	gpio_set_dir(A8_PIN, GPIO_IN);
-	gpio_set_dir(A9_PIN, GPIO_IN);
-
-	gpio_init(IOW_PIN);
-	gpio_set_dir(IOW_PIN, GPIO_IN);
-	gpio_init(IOR_PIN);
-	gpio_set_dir(IOR_PIN, GPIO_IN);
-
-	char buf[500] = "";
+	char buf[50] = "";
 	uint address, last_address, last_data, all, data = 0;
 	uint last_io, io = 0;
 
-	gpio_put(ADS_PIN, 0);
-	sleep_us(1);
-	gpio_put(ADS_PIN, 1);
-	sleep_us(1);
-	gpio_put(ADS_PIN, 0);
+	//gpio_put(ADS_PIN, 0);
+	//sleep_us(1);
+	//gpio_put(ADS_PIN, 1);
+	//sleep_us(1);
+	//gpio_put(ADS_PIN, 0);
 
 	uart_puts(UART_ID, "==START==\r\n");
 
@@ -214,6 +182,33 @@ int main() {
 	uint i = 0;
 	uint io_pin = IOW_PIN;
 	last_io = gpio_get(io_pin);
+
+    // Load the isa program, and a free state machine to run the program
+    PIO pio = pio0;
+    uint offset = pio_add_program(pio, &isa_program);
+    uint sm = pio_claim_unused_sm(pio, true);
+    isa_program_init(pio, sm, offset);
+
+	uint line = 0;
+	while (true) {
+		uint32_t iow_read = pio_sm_get(pio, sm);
+		uint16_t port = (iow_read >> 8) & 0x00FF;
+		if (port == 0x80) {
+			uint16_t data = iow_read & 0x00FF;
+			if (last_data != data) {
+				sprintf(buf, "D[%02X]\r\n", data);
+				uart_puts(UART_ID, buf);
+
+				//sprintf(buf, "D[%02X] D[%02X]", last_data, data);
+				//lcd_set_cursor(0, 0);
+				//lcd_string(buf);
+				last_data = data;
+			}
+		}
+	}
+
+	/*
+	 * Slow method
 	while (true) {
 		last_io = io;
 		io = gpio_get(io_pin);
@@ -248,6 +243,7 @@ int main() {
 			}
 		}
 	}
+	*/
 
 	return 0;
 }
