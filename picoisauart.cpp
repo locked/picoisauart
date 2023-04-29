@@ -115,21 +115,10 @@ void lcd_init() {
 }
 
 
-
-
 // uart
 #define UART_ID uart0
 #define BAUD_RATE 115200
 //#define UART_RX_PIN -1
-
-// pins
-//#define IOW_PIN 4
-//#define IOR_PIN 5
-//#define AD0_PIN 6
-//#define DACK_PIN 19
-//#define IRQ_PIN 21
-//#define IOCHRDY_PIN 26
-//#define ADS_PIN 27
 
 #define UART_TX_PIN 28
 
@@ -196,8 +185,6 @@ int main() {
 	uint64_t now = 0;
 	uint i, j = 0;
 	uint last_index = 0;
-	uint io_pin = IOW_PIN;
-	last_io = gpio_get(io_pin);
 
     uint offset = pio_add_program(pio0, &isa_program);
     sm = pio_claim_unused_sm(pio0, true);
@@ -232,42 +219,9 @@ int main() {
 	}
 
 	/*
-	uint index = 0;
-	uint line = 0;
-	while (true) {
-		uint32_t iow_read = pio_sm_get(pio, sm);
-		uint16_t port = (iow_read >> 8) & 0x00FF;
-		if (port == 0x80) {
-			uint16_t data = iow_read & 0x00FF;
-			if (last_data != data) {
-				if (index < 100) {
-					codes[index] = data;
-					index += 1;
-				}
-				last_data = data;
-			}
-		}
-		i += 1;
-		if (i > 50000) {
-			i = 0;
-			now = to_us_since_boot(get_absolute_time());
-			if (now - last_display > 2000000) {
-				for (j=last_index; j<index; j++) {
-					sprintf(buf, "D[%02X]\r\n", codes[j]);
-					uart_puts(UART_ID, buf);
-				}
-				last_index = j;
-
-				//sprintf(buf, "D[%02X] D[%02X]", last_data, data);
-				//lcd_set_cursor(0, 0);
-				//lcd_string(buf);
-			}
-		}
-	}
-	*/
-
-	/*
 	 * Slow method
+	uint io_pin = IOW_PIN;
+	last_io = gpio_get(io_pin);
 	while (true) {
 		last_io = io;
 		io = gpio_get(io_pin);
